@@ -3,73 +3,50 @@
 #include <GLUT/glut.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdbool.h>
 #include <math.h>
 #include <time.h>
-#define pi (22.0/7)
+#include "helpers.h"
 #define k_circSize 50
-#define k_charSizeX 50
-#define k_charSizeY 100
+#define k_time 1
+#define k_maxNum 20
 
 GLFWwindow *window;
 
 int numObjs;
+bool *font;
 
-/*
- *void drawChar(char c, int *x, int *y){
- *    //glBegin(GL_LINE_LOOP);
- *        //glVertex2f((GLfloat) *x, (GLfloat) *y);
- *        //glVertex2f((GLfloat) *x, (GLfloat) *y+k_charSizeY);
- *        //glVertex2f((GLfloat) *x+k_charSizeX, (GLfloat) *y+k_charSizeY);
- *        //glVertex2f((GLfloat) *x+k_charSizeX, (GLfloat) *y);
- *    //glEnd();
- *    switch(c){
- *        case '0':
- *            printf("0");
- *            glBegin(GL_LINE_LOOP);
- *            for(int i=0;i<10;i++){
- *                glVertex2f((GLfloat) *x+k_charSizeX/2.0*(1+cos(2*pi/10*i)), (GLfloat) *y+k_charSizeY/2.0*(1+sin(2*pi/10*i)));
- *            }
- *            glEnd();
- *            break;
- *        case '1':
- *            printf("1");
- *            glBegin(GL_LINES);
- *                glVertex2f((GLfloat) *x+k_charSizeX/10.0, *y);
- *                glVertex2f((GLfloat) *x+k_charSizeX*9/10.0, *y);
- *                glVertex2f((GLfloat) *x+k_charSizeX/2.0, *y);
- *                glVertex2f((GLfloat) *x+k_charSizeX/2.0, *y + k_charSizeY);
- *                glVertex2f((GLfloat) *x+k_charSizeX/2.0, *y + k_charSizeY);
- *                glVertex2f((GLfloat) *x+k_charSizeX/10.0, *y + k_charSizeY*4/6.0);
- *            glEnd();
- *            break;
- *        case '2':
- *            printf("2");
- *            glBegin(GL_LINE_LOOP);
- *                
- *            glEnd();
- *    }
- *    *x += k_charSizeX;
- *}
- */
+void drawChar(char c, int *x, int *y){
+    printf("%c", c);
+    glPointSize(5.f);
+    glBegin(GL_POINTS);
+    for(int i=0;i<5*7;i++){
+        if(font[(c-48)*5*7+i]){glColor3f(1.f, 1.f, 1.f);}
+        else{glColor3f(0.f, 0.f, 0.f);}
+        glVertex2f(*x+i%5*10, *y-i/5*10);
+    }
+    glEnd();
+    *x += 10*6;
+}
 
-/*
- *void drawString(char *s, int x, int y){
- *    while(*s != '\0'){
- *        //drawChar(*s, &x, &y);
- *        glutj
- *        s++;
- *    }
- *    printf("\n");
- *}
- */
+void drawString(char *s, int x, int y){
+    while(*s != '\0'){
+        drawChar(*s, &x, &y);
+        s++;
+    }
+    printf("\n");
+}
+
 
 void reveal(){ //prints the number of objects
+    glfwSetTime(k_time+1);
     glfwMakeContextCurrent(window);
     float ratio;
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
     glViewport(0, 0, width, height);
-    glClear(GL_COLOR_BUFFER_BIT);
+    glfwSwapBuffers(window);
+    //glClear(GL_ACCUM_BUFFER_BIT);
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
@@ -77,10 +54,11 @@ void reveal(){ //prints the number of objects
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    //char *s[100];
-    //sprintf(s, "%d", numObjs);
-    //drawString("101", 100, 100);
-    glutBitmapString(GLUT_STROKE_MONO_ROMAN, "101");
+    char *s;
+    s = salloc(sizeof(char)*100);
+    sprintf(s, "%d", numObjs);
+    drawString(s, 100, 100);
+    free(s);
     glfwSwapBuffers(window);
 }
 
@@ -98,25 +76,26 @@ void draw(){
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
+    glColor3f(1.f,1.f,1.f);
 
     float x, y;
     for(int i=0;i<numObjs;i++){
         x = rand() % width;
         y = rand() % height;
         glBegin(GL_LINE_LOOP);
-        for(int i=0;i<1000;i++){
-            glVertex2f((GLfloat) x+k_circSize*cos(2*pi/1000*i), (GLfloat) y+k_circSize*sin(2*pi/1000*i));
+        for(int i=0;i<100;i++){
+            glVertex2f((GLfloat) x+k_circSize*cos(2*pi/100*i), (GLfloat) y+k_circSize*sin(2*pi/100*i));
         }
         glEnd();
     }
 
     glfwSwapBuffers(window);
-    reveal();
+    glfwSetTime(0);
 }
 
 
 void update(){
-    numObjs = rand() % 10 + 1;
+    numObjs = rand() % k_maxNum + 1;
 }
 
 static void error_callback(int error, const char* description){
@@ -127,14 +106,30 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
 {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GL_TRUE);
-    if(action == GLFW_PRESS){
+    else if(key == GLFW_KEY_SPACE && action == GLFW_PRESS){
         update();
         draw();
     }
 }
 
+void initFont(char *file){
+    font = salloc(sizeof(bool)*5*7*43);
+    FILE* f;
+    if((f = fopen(file, "r")) == NULL){
+        printf("file not found: %s", file);
+        exit(1);
+    }
+    int c;
+    int i=0;
+    while((c = fgetc(f)) != EOF){
+        if(c == '\n'){continue;}
+        else{font[i++]= (c == '1' ? true : false);}
+    }
+}
+
 void init(){
     srand(time(NULL));
+    initFont("../dots.font");
     update();
     glfwSetErrorCallback(error_callback);
     if (!glfwInit())
@@ -152,6 +147,7 @@ void init(){
 }
 
 void deinit(){
+    free(font);
     glfwDestroyWindow(window);
     glfwTerminate();
 }
@@ -159,6 +155,7 @@ void deinit(){
 int main(void){
     init();
     while (!glfwWindowShouldClose(window)){
+        if((int)glfwGetTime() == k_time){reveal();}
         glfwPollEvents();
     }
     deinit();
