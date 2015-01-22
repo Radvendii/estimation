@@ -45,6 +45,7 @@ void reveal(){ //prints the number of objects
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
     glViewport(0, 0, width, height);
+    glClear(GL_COLOR_BUFFER_BIT);
     glfwSwapBuffers(window);
     //glClear(GL_ACCUM_BUFFER_BIT);
 
